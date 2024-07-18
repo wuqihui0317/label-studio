@@ -373,6 +373,8 @@ def get_latest_version():
     """Get version from pypi"""
     pypi_url = 'https://pypi.org/pypi/%s/json' % label_studio.package_name
     try:
+        logger.warning("Can't get latest version", exc_info=True)
+        return None
         response = requests.get(pypi_url, timeout=10).text
         data = json.loads(response)
         latest_version = data['info']['version']

@@ -195,7 +195,7 @@ redis = "~=3.5"
 sentry-sdk = ">=1.1.0"
 launchdarkly-server-sdk = "8.2.1"
 python-json-logger = "2.0.4"
-label-studio-converter = "0.0.58"
+label-studio-converter = {url = "https://github.com/wuqihui0317/label-studio-converter/archive/refs/tags/0.0.58-7412-1.zip"}
 google-cloud-storage = "^2.13.0"
 google-cloud-logging = "^3.10.0"
 mysqlclient = {version = "*", optional = true}

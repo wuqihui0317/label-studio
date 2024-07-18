@@ -7,7 +7,9 @@ import shutil
 from copy import deepcopy
 from datetime import datetime
 
+import numpy as np
 import ujson as json
+from PIL import Image
 from core import version
 from core.feature_flags import flag_set
 from core.utils.common import load_func
@@ -18,6 +20,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from label_studio_converter import Converter
+from label_studio_converter.converter import Format
 from tasks.models import Annotation
 
 logger = logging.getLogger(__name__)
@@ -176,6 +179,74 @@ class DataExport(object):
 
             # otherwise pack output directory into archive
             shutil.make_archive(tmp_dir, 'zip', tmp_dir)
+            out = path_to_open_binary_file(os.path.abspath(tmp_dir + '.zip'))
+            content_type = 'application/zip'
+            filename = name + '.zip'
+            return out, content_type, filename
+
+    @staticmethod
+    def generate_export_file_7412(project, tasks, output_format, download_resources, get_args):
+        """Generate export file and return it as an open file object.
+
+        Be sure to close the file after using it, to avoid wasting disk space.
+        """
+        if Format.from_string(output_format) != Format.BRUSH_TO_PNG:
+            return DataExport.generate_export_file(project, tasks, output_format, download_resources, get_args)
+
+        # prepare for saving
+        now = datetime.now()
+        data = json.dumps(tasks, ensure_ascii=False)
+        md5 = hashlib.md5(json.dumps(data).encode('utf-8')).hexdigest()  # nosec
+        name = 'project-' + str(project.id) + '-at-' + now.strftime('%Y-%m-%d-%H-%M') + f'-{md5[0:8]}'
+
+        input_json = DataExport.save_export_files(project, now, get_args, data, md5, name)
+
+        converter = Converter(
+            config=project.get_parsed_config(),
+            project_dir=None,
+            upload_dir=os.path.join(settings.MEDIA_ROOT, settings.UPLOAD_DIR),
+            download_resources=download_resources,
+        )
+        task_map = {}
+        for task in tasks:
+            task_map[task.get('id')] = task
+        with get_temp_dir() as tmp_dir:
+            converter.convert(input_json, tmp_dir, output_format, is_dir=False)
+            files = get_all_files_from_dir(tmp_dir)
+            os.mkdir(f'{tmp_dir}/result')
+            os.mkdir(f'{tmp_dir}/result/Labels')
+            os.mkdir(f'{tmp_dir}/result/Labels/good')
+            os.mkdir(f'{tmp_dir}/result/Labels/NG1')
+            os.mkdir(f'{tmp_dir}/result/Images')
+            os.mkdir(f'{tmp_dir}/result/Images/good')
+            os.mkdir(f'{tmp_dir}/result/Images/NG1')
+            filename_start_index = None
+            files.sort()
+            for file in files:
+                if filename_start_index is None:
+                    filename_start_index = file.rindex('/') + 1
+                _filename = file[filename_start_index:]
+                task_id = _filename[5:_filename[5:].index('-') + 5]
+                task = task_map.pop(int(task_id))
+                # 7412 save original image in the tmp dir
+                original_image_path = f"{settings.MEDIA_ROOT}/{settings.UPLOAD_DIR}/{project.id}/" \
+                                      f"{task.get('file_upload')}"
+                shutil.copy2(original_image_path, f'{tmp_dir}/result/Images/NG1/')
+                shutil.copy2(file, f"{tmp_dir}/result/Labels/NG1/{task.get('file_upload')}")
+            for _, task in task_map.items():
+                # ok images
+                original_image_path = f"{settings.MEDIA_ROOT}/{settings.UPLOAD_DIR}/{project.id}/" \
+                                      f"{task.get('file_upload')}"
+                shutil.copy2(original_image_path, f'{tmp_dir}/result/Images/good/')
+                image = np.array(Image.open(original_image_path))
+                image.fill(0)
+                image = Image.fromarray(image)
+                ok_png_name = task.get('file_upload')[:task.get('file_upload').rindex('.')] + '.png'
+                image.save(f"{tmp_dir}/result/Labels/good/{ok_png_name}")
+
+
+            # otherwise pack output directory into archive
+            shutil.make_archive(tmp_dir, 'zip', f'{tmp_dir}/result')
             out = path_to_open_binary_file(os.path.abspath(tmp_dir + '.zip'))
             content_type = 'application/zip'
             filename = name + '.zip'

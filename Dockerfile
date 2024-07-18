@@ -96,7 +96,7 @@ ENV HOME=$LS_DIR
 
 EXPOSE 8080
 
-USER 1001
+USER root
 
 ENTRYPOINT ["./deploy/docker-entrypoint.sh"]
 CMD ["label-studio"]
