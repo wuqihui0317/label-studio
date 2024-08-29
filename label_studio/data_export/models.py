@@ -231,8 +231,32 @@ class DataExport(object):
                 # 7412 save original image in the tmp dir
                 original_image_path = f"{settings.MEDIA_ROOT}/{settings.UPLOAD_DIR}/{project.id}/" \
                                       f"{task.get('file_upload')}"
-                shutil.copy2(original_image_path, f'{tmp_dir}/result/Images/NG1/')
-                shutil.copy2(file, f"{tmp_dir}/result/Labels/NG1/{task.get('file_upload')}")
+                file_name = task.get('file_upload').split('.')[0]
+                file_type = task.get('file_upload').split('.')[1]
+                # ng原图和对应label图片，分别生成 原图 _NG1；左右+上下翻转 _NG1_M_F；左右翻转 _NG1_M_X；上下翻转 _NG1_X_F
+                shutil.copy2(original_image_path, f'{tmp_dir}/result/Images/NG1/{file_name}_NG1.{file_type}')
+                shutil.copy2(file, f"{tmp_dir}/result/Labels/NG1/{file_name}_NG1.{file_type}")
+                original_image = Image.open(original_image_path)
+                # 上下翻转
+                updown_flipped = original_image.transpose(Image.FLIP_TOP_BOTTOM)
+                updown_flipped.save(f"{tmp_dir}/result/Images/NG1/{file_name}_NG1_X_F.{file_type}")  # 保存上下翻转的图片
+                # 左右翻转
+                leftright_flipped = original_image.transpose(Image.FLIP_LEFT_RIGHT)
+                leftright_flipped.save(f"{tmp_dir}/result/Images/NG1/{file_name}_NG1_M_X.{file_type}")  # 保存左右翻转的图片
+                # 上下加左右翻转
+                both_flipped = original_image.transpose(Image.ROTATE_180)
+                both_flipped.save(f"{tmp_dir}/result/Images/NG1/{file_name}_NG1_M_F.{file_type}")  # 保存上下加左右翻转的图片
+
+                label_image = Image.open(file)
+                # 上下翻转
+                updown_flipped = label_image.transpose(Image.FLIP_TOP_BOTTOM)
+                updown_flipped.save(f"{tmp_dir}/result/Labels/NG1/{file_name}_NG1_X_F.{file_type}")  # 保存上下翻转的图片
+                # 左右翻转
+                leftright_flipped = label_image.transpose(Image.FLIP_LEFT_RIGHT)
+                leftright_flipped.save(f"{tmp_dir}/result/Labels/NG1/{file_name}_NG1_M_X.{file_type}")  # 保存左右翻转的图片
+                # 上下加左右翻转
+                both_flipped = label_image.transpose(Image.ROTATE_180)
+                both_flipped.save(f"{tmp_dir}/result/Labels/NG1/{file_name}_NG1_M_F.{file_type}")  # 保存上下加左右翻转的图片
             for _, task in task_map.items():
                 # ok images
                 original_image_path = f"{settings.MEDIA_ROOT}/{settings.UPLOAD_DIR}/{project.id}/" \
