@@ -235,7 +235,7 @@ class DataExport(object):
                 file_type = task.get('file_upload').split('.')[1]
                 # ng原图和对应label图片，分别生成 原图 _NG1；左右+上下翻转 _NG1_M_F；左右翻转 _NG1_M_X；上下翻转 _NG1_X_F
                 shutil.copy2(original_image_path, f'{tmp_dir}/result/Images/NG1/{file_name}_NG1.{file_type}')
-                shutil.copy2(file, f"{tmp_dir}/result/Labels/NG1/{file_name}_NG1.{file_type}")
+                shutil.copy2(file, f"{tmp_dir}/result/Labels/NG1/{file_name}_NG1.png")
                 original_image = Image.open(original_image_path)
                 # 上下翻转
                 updown_flipped = original_image.transpose(Image.FLIP_TOP_BOTTOM)
@@ -250,21 +250,22 @@ class DataExport(object):
                 label_image = Image.open(file)
                 # 上下翻转
                 updown_flipped = label_image.transpose(Image.FLIP_TOP_BOTTOM)
-                updown_flipped.save(f"{tmp_dir}/result/Labels/NG1/{file_name}_NG1_X_F.{file_type}")  # 保存上下翻转的图片
+                updown_flipped.save(f"{tmp_dir}/result/Labels/NG1/{file_name}_NG1_X_F.png")  # 保存上下翻转的图片
                 # 左右翻转
                 leftright_flipped = label_image.transpose(Image.FLIP_LEFT_RIGHT)
-                leftright_flipped.save(f"{tmp_dir}/result/Labels/NG1/{file_name}_NG1_M_X.{file_type}")  # 保存左右翻转的图片
+                leftright_flipped.save(f"{tmp_dir}/result/Labels/NG1/{file_name}_NG1_M_X.png")  # 保存左右翻转的图片
                 # 上下加左右翻转
                 both_flipped = label_image.transpose(Image.ROTATE_180)
-                both_flipped.save(f"{tmp_dir}/result/Labels/NG1/{file_name}_NG1_M_F.{file_type}")  # 保存上下加左右翻转的图片
+                both_flipped.save(f"{tmp_dir}/result/Labels/NG1/{file_name}_NG1_M_F.png")  # 保存上下加左右翻转的图片
             for _, task in task_map.items():
                 # ok images
                 original_image_path = f"{settings.MEDIA_ROOT}/{settings.UPLOAD_DIR}/{project.id}/" \
                                       f"{task.get('file_upload')}"
                 shutil.copy2(original_image_path, f'{tmp_dir}/result/Images/good/')
-                image = np.array(Image.open(original_image_path))
-                image.fill(0)
-                image = Image.fromarray(image)
+                image = Image.new('L', Image.open(original_image_path).size, 0)
+                # image.fill(0)
+                # image = Image.fromarray(image)
+                # image.convert('I;8')
                 ok_png_name = task.get('file_upload')[:task.get('file_upload').rindex('.')] + '.png'
                 image.save(f"{tmp_dir}/result/Labels/good/{ok_png_name}")
 
